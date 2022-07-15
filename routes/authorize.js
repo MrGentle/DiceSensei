@@ -3,8 +3,8 @@ const router = express.Router();
 
 const { encrypt } = require('../lib/crypto.js');
 const { getAccessToken, callEndpoint, endpoints } = require('../lib/oauth2.js');
-const { getGrade } = require('../lib/grades.js');
-const { getInteraction } = require('../lib/commands.js');
+const { getGrade, assignGrade } = require('../lib/grades.js');
+const { getInteraction, removeInteraction } = require('../lib/commands.js');
 
 const { keyv } = require('../lib/keyv.js');
 
@@ -26,17 +26,18 @@ router.get('/authorize', async (req, res) => {
                 currentGrade: undefined
             }
 
-            const gradation = await getGrade(userData);
-            if (gradation.isNewGrade) userData.currentGrade = gradation.grade;
+            const grading = await getGrade(userData);
+            if (grading.isNewGrade) userData.currentGrade = grading.grade;
 
             const interaction = getInteraction(userData.discordID);
-            await interaction.followUp(gradation.message);
-            removeInteraction(userData.discordID);
-            
+            assignGrade(interaction.member, userData, grading);
+            await interaction.followUp(grading.message);
             keyv.set(userData.discordID, userData);
         } catch (ex) {
             console.error(ex);
         }
+        
+        removeInteraction(userData.discordID);
         res.send('Thank you for authorizing Dice Sensei, you can close this now');
     }
 })
